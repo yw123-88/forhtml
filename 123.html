@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英语周报交互式讲评</title>
+<style>
+:root{
+    --base-font-size:16px;
+    --primary:#1f5949;
+    --primary-light:#347c67;
+    --bg:#fbfdfb;
+    --text:#222;
+    --muted:#666;
+    --green-word:#289657;
+    --card-bg:#fff;
+    --border:#e5eee9;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:var(--base-font-size);}
+body{
+    font-size:1rem;
+    font-family:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background-color:var(--bg);
+    color:var(--text);
+    line-height:1.65;
+}
+/* 顶部导航栏 */
+.top-nav{
+    background-color:var(--primary);
+    color:#fff;
+    padding:12px 16px;
+    position:sticky;
+    top:0;
+    z-index:100;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+}
+.nav-inner{
+    max-width:1400px;
+    margin:0 auto;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:12px;
+}
+.nav-title{font-size:1.15rem;font-weight:600;margin-right:12px;}
+.nav-btn{
+    background:var(--primary-light);
+    color:white;
+    border:none;
+    padding:6px 11px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:0.9rem;
+    transition:0.2s;
+}
+.nav-btn.active{background:#fff;color:var(--primary);font-weight:600;}
+.nav-btn:hover{opacity:0.92;}
+.font-control{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-left:auto;
+    white-space:nowrap;
+}
+.font-control label{font-size:0.9rem;}
+.font-control input[type="range"]{width:120px;}
+/* 主体布局：左右两栏 */
+.container{
+    max-width:1400px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:20px;
+    padding:16px;
+}
+@media (max-width:900px){
+    .container{grid-template-columns:1fr;}
+}
+.col{
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px;
+    min-height:calc(100vh - 140px);
+}
+.col h3{color:var(--primary);margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+/* 原文高亮单词（可点击查词） */
+.word-mark{
+    color:var(--green-word);
+    font-weight:500;
+    cursor:pointer;
+    text-decoration:underline dotted;
+}
+/* 翻译区块 */
+.trans-block{
+    margin-top:14px;
+    padding:12px;
+    background:#f4f9f6;
+    border-radius:8px;
+    color:#335549;
+    display:none;
+}
+.trans-block.show{display:block;}
+.btn-trans{
+    margin:10px 0;
+    background:#e8f3ef;
+    color:var(--primary);
+    border:1px solid var(--primary-light);
+    padding:5px 10px;
+    border-radius:6px;
+    cursor:pointer;
+}
+/* 右侧题号栏，吸顶 */
+.q-num-bar{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    padding:10px 0;
+    background:#fff;
+    z-index:90;
+}
+.q-num-bar.sticky{
+    position:sticky;
+    top:72px;
+    padding:8px 0;
+    box-shadow:0 2px 6px rgba(0,0,0,0.06);
+}
+.q-num-btn{
+    width:34px;height:34px;
+    border-radius:50%;
+    border:1px solid var(--primary-light);
+    background:#fff;
+    color:var(--primary);
+    cursor:pointer;
+    font-weight:500;
+}
+.q-num-btn.active{background:var(--primary);color:white;}
+.q-num-btn.answered{background:#d4e9e2;}
+/* 题目区域 */
+.question-wrap{margin-top:14px;}
+.question{display:none;}
+.question.active{display:block;}
+.opt{
+    display:block;
+    padding:8px 10px;
+    margin:6px 0;
+    border:1px solid #ddd;
+    border-radius:7px;
+    cursor:pointer;
+}
+.opt:hover{background:#f7fbf9;}
+.opt.right{background:#d6f1e4;border-color:#309e64;}
+.opt.wrong{background:#ffe9e9;border-color:#d44;}
+.ans-wrap{margin-top:12px;}
+.toggle-ans{
+    background:#f0f7f4;
+    border:1px solid var(--border);
+    color:var(--primary);
+    padding:7px 10px;
+    border-radius:6px;
+    cursor:pointer;
+}
+.ans-content{
+    margin-top:10px;
+    padding:12px;
+    background:#f6faf8;
+    border-radius:8px;
+    display:none;
+}
+.ans-content.show{display:block;}
+/* 写作范文模块 */
+.writing-block{margin-top:12px;}
+.toggle-write{
+    background:#e8f3ef;
+    color:var(--primary);
+    border:1px solid var(--primary-light);
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+}
+.write-content{
+    margin-top:10px;
+    padding:12px;
+    background:#f6faf8;
+    border-radius:8px;
+    display:none;
+}
+.write-content.show{display:block;}
+/* 查词弹窗 */
+.word-popup{
+    position:fixed;
+    width:320px;
+    max-width:calc(100vw - 24px);
+    background:#fff;
+    border:1px solid var(--primary-light);
+    border-radius:10px;
+    padding:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.18);
+    z-index:200;
+    display:none;
+    font-size:1rem;
+}
+.word-popup.show{display:block;}
+.word-popup h4{color:var(--primary);margin-bottom:4px;}
+.word-phonetic{color:#555;font-style:italic;margin-bottom:6px;}
+.word-pos{color:#288057;font-weight:500;}
+.word-eg{margin-top:8px;font-size:0.92rem;color:#444;}
+.overlay{
+    position:fixed;inset:0;
+    background:transparent;
+    z-index:199;
+    display:none;
+}
+.overlay.show{display:block;}
+</style>
+</head>
+<body>
+<div class="top-nav">
+    <div class="nav-inner">
+        <div class="nav-title">英语周报交互式讲评</div>
+        <div class="nav-group">
+            <button class="nav-btn" data-id="A">A篇</button>
+            <button class="nav-btn" data-id="B">B篇</button>
+            <button class="nav-btn" data-id="C">C篇</button>
+            <button class="nav-btn" data-id="D">D篇</button>
+            <button class="nav-btn" data-id="seven">七选五</button>
+            <button class="nav-btn" data-id="cloze">完形填空</button>
+            <button class="nav-btn" data-id="grammar">语法填空</button>
+            <button class="nav-btn" data-id="app">应用文</button>
+            <button class="nav-btn" data-id="continuation">读后续写</button>
+        </div>
+        <div class="font-control">
+            <label>字号：</label>
+            <input type="range" id="fontSlider" min="13" max="48" value="16">
+            <span id="fontVal">16px</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="col left-col">
+        <h3>原文</h3>
+        <div id="articleBox"></div>
+        <button class="btn-trans" id="btnTrans">显示翻译</button>
+        <div class="trans-block" id="transBox"></div>
+    </div>
+    <div class="col right-col">
+        <h3>题目与解析</h3>
+        <div class="q-num-bar" id="qNumBar"></div>
+        <div class="question-wrap" id="qBox"></div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="word-popup" id="wordPopup">
+    <h4 id="popWord"></h4>
+    <div class="word-phonetic" id="popPh"></div>
+    <div class="word-pos" id="popPos"></div>
+    <div id="popMean"></div>
+    <div class="word-eg" id="popEg"></div>
+</div>
+
+<script>
+// ===================== 在这里替换周报真实内容 =====================
+const paperData = {
+    A:{
+        title:"A篇 阅读示例",
+        article:`This is a sample passage. <span class="word-mark" data-word="sample">Sample</span> text for your weekly paper. We can put many <span class="word-mark" data-word="benefit">benefits</span> here.`,
+        trans:"这是一篇示范短文。供你的周报使用的示范文本。我们可以在这里填入很多益处。",
+        questions:[
+            {
+                qid:1,
+                stem:"What does the word sample mean?",
+                type:"choice",
+                options:["A. 样品","B. 食物","C. 动物","D. 地点"],
+                answer:"A",
+                analysis:"解析：sample 此处含义为样品。"
+            },
+            {
+                qid:2,
+                stem:"What can we learn from the text?",
+                type:"choice",
+                options:["A. Nothing","B. Some benefits","C. Many animals","D. A big house"],
+                answer:"B",
+                analysis:"解析：文中提到 many benefits。"
+            }
+        ]
+    },
+    B:{
+        title:"B篇 阅读示例",
+        article:`B passage test. <span class="word-mark" data-word="explore">Explore</span> new ideas and enjoy reading.`,
+        trans:"B篇测试文本。探索新想法，享受阅读。",
+        questions:[
+            {
+                qid:3,
+                stem:"What should we do?",
+                type:"choice",
+                options:["A. Explore ideas","B. Sleep all day","C. Watch TV","D. Play games"],
+                answer:"A",
+                analysis:"解析：原文 explore new ideas。"
+            }
+        ]
+    },
+    C:{title:"C篇",article:"C article...",trans:"C翻译",questions:[]},
+    D:{title:"D篇",article:"D article...",trans:"D翻译",questions:[]},
+    seven:{title:"七选五",article:"七选五原文",trans:"七选五翻译",questions:[]},
+    cloze:{title:"完形填空",article:"完形原文",trans:"完形翻译",questions:[]},
+    grammar:{title:"语法填空",article:"语法原文",trans:"语法翻译",questions:[]},
+    app:{
+        title:"应用文",
+        article:"假定你是李华，写一封邀请信。",
+        trans:"Suppose you are Li Hua and write an invitation letter.",
+        questions:[],
+        isWriting:true,
+       范文:`Dear Tom,
+I’m writing to invite you to our activity.
+Looking forward to your reply.
+Yours,
+Li Hua`,
+        tips:"提分点：开头点明目的，结尾礼貌期待回复，句式多样。"
+    },
+    continuation:{
+        title:"读后续写",
+        article:"A boy found a box on the beach...",
+        trans:"一个男孩在沙滩发现一个箱子……",
+        questions:[],
+        isWriting:true,
+       范文:`Paragraph 1: He knelt down and opened the box carefully.
+Paragraph 2: What he saw surprised him deeply.`,
+        tips:"提分点：动作描写、情绪描写、环境烘托。"
+    }
+};
+// 单词词典，查词弹窗用
+const wordDict = {
+    sample:{ph:"/ˈsɑːmpl/",pos:"n. 样品；样本",mean:"样本，范例",eg:"This is a sample sentence. 这是一个例句。"},
+    benefit:{ph:"/ˈbenɪfɪt/",pos:"n. 好处；益处 v. 有益于",mean:"益处，优势",eg:"We can get many benefits from reading. 我们能从阅读中收获很多益处。"},
+    explore:{ph:"/ɪkˈsplɔː(r)/",pos:"v. 探索；探究",mean:"探索，考察",eg:"Children love to explore the world. 孩子们喜欢探索世界。"}
+};
+// ==================================================================
+
+// 全局变量
+let currentSection = "A";
+let currentQid = null;
+let answeredMap = {};
+const $ = s=>document.querySelector(s);
+const $$ = s=>document.querySelectorAll(s);
+
+// 字号滑块
+const slider = $("#fontSlider");
+const fontVal = $("#fontVal");
+slider.oninput = ()=>{
+    const v = slider.value + "px";
+    document.documentElement.style.setProperty("--base-font-size",v);
+    fontVal.innerText = v;
+};
+
+// 篇目切换按钮
+$$(".nav-btn").forEach(btn=>{
+    btn.onclick = ()=>{
+        $$(".nav-btn").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+        currentSection = btn.dataset.id;
+        renderSection();
+    }
+});
+
+// 渲染当前篇目
+function renderSection(){
+    const data = paperData[currentSection];
+    $("#articleBox").innerHTML = data.article;
+    $("#transBox").innerText = data.trans;
+    $("#transBox").classList.remove("show");
+    $("#btnTrans").innerText = "显示翻译";
+    answeredMap = {};
+    currentQid = null;
+    bindWordClick();
+
+    // 写作模块（应用文/读后续写）
+    if(data.isWriting){
+        $("#qNumBar").innerHTML = "";
+        $("#qBox").innerHTML = `
+        <div class="writing-block">
+            <button class="toggle-write" id="showWriteBtn">查看参考范文与提分点</button>
+            <div class="write-content" id="writePanel">
+                <p><strong>参考范文：</strong></p>
+                <pre style="white-space:pre-wrap;">${data.范文}</pre>
+                <p style="margin-top:10px;"><strong>写作提分点：</strong>${data.tips}</p>
+            </div>
+        </div>
+        `;
+        $("#showWriteBtn").onclick = ()=>{
+            $("#writePanel").classList.toggle("show");
+            $("#showWriteBtn").innerText = $("#writePanel").classList.contains("show") ? "收起范文" : "查看参考范文与提分点";
+        }
+        return;
+    }
+
+    // 客观题：题号栏 + 题目
+    const qs = data.questions;
+    let numHtml = "";
+    let qHtml = "";
+    qs.forEach((q,idx)=>{
+        numHtml += `<button class="q-num-btn" data-qid="${q.qid}">${q.qid}</button>`;
+        let optHtml = "";
+        q.options.forEach(opt=>{
+            optHtml += `<div class="opt" data-opt="${opt[0]}">${opt}</div>`;
+        })
+        qHtml += `
+        <div class="question" data-qid="${q.qid}">
+            <div class="q-stem">${q.stem}</div>
+            <div class="opt-list">${optHtml}</div>
+            <div class="ans-wrap">
+                <button class="toggle-ans">查看答案与解析</button>
+                <div class="ans-content">
+                    <p><strong>答案：</strong>${q.answer}</p>
+                    <p><strong>解析：</strong>${q.analysis}</p>
+                </div>
+            </div>
+        </div>`;
+    })
+    $("#qNumBar").innerHTML = numHtml;
+    $("#qBox").innerHTML = qHtml;
+    // 默认选中第一题
+    if(qs.length>0){
+        switchQuestion(qs[0].qid);
+    }
+    bindQuestionEvents();
+}
+
+// 切换题目
+function switchQuestion(qid){
+    currentQid = qid;
+    $$(".q-num-btn").forEach(b=>b.classList.toggle("active", b.dataset.qid == qid));
+    $$(".question").forEach(q=>q.classList.toggle("active", q.dataset.qid == qid));
+}
+
+// 绑定题目交互：题号、选项判题、解析折叠
+function bindQuestionEvents(){
+    $$(".q-num-btn").forEach(btn=>{
+        btn.onclick = ()=>switchQuestion(btn.dataset.qid);
+    })
+    $$(".opt").forEach(opt=>{
+        opt.onclick = ()=>{
+            const qWrap = opt.closest(".question");
+            const qid = qWrap.dataset.qid;
+            const qData = paperData[currentSection].questions.find(x=>x.qid==qid);
+            $$(".opt", qWrap).forEach(o=>o.classList.remove("right","wrong"));
+            const selected = opt.dataset.opt;
+            if(selected === qData.answer){
+                opt.classList.add("right");
+            }else{
+                opt.classList.add("wrong");
+                $$(".opt", qWrap).forEach(o=>{
+                    if(o.dataset.opt === qData.answer) o.classList.add("right");
+                })
+            }
+            answeredMap[qid] = true;
+            $$(".q-num-btn").forEach(b=>{
+                if(b.dataset.qid == qid) b.classList.add("answered");
+            })
+        }
+    })
+    $$(".toggle-ans").forEach(btn=>{
+        btn.onclick = ()=>{
+            const panel = btn.nextElementSibling;
+            panel.classList.toggle("show");
+            btn.innerText = panel.classList.contains("show") ? "收起答案与解析" : "查看答案与解析";
+        }
+    })
+}
+
+// 翻译开关
+$("#btnTrans").onclick = ()=>{
+    $("#transBox").classList.toggle("show");
+    $("#btnTrans").innerText = $("#transBox").classList.contains("show") ? "隐藏翻译" : "显示翻译";
+}
+
+// 查词弹窗绑定
+function bindWordClick(){
+    $$(".word-mark").forEach(span=>{
+        span.onclick = (e)=>{
+            e.stopPropagation();
+            const w = span.dataset.word;
+            const info = wordDict[w];
+            if(!info) return;
+            $("#popWord").innerText = w;
+            $("#popPh").innerText = info.ph;
+            $("#popPos").innerText = info.pos;
+            $("#popMean").innerText = info.mean;
+            $("#popEg").innerText = info.eg;
+            const pop = $("#wordPopup");
+            pop.classList.add("show");
+            $("#overlay").classList.add("show");
+            // 定位弹窗在点击位置附近
+            const rect = span.getBoundingClientRect();
+            pop.style.left = Math.min(rect.left, window.innerWidth - 340) + "px";
+            pop.style.top = (rect.bottom + 8) + "px";
+        }
+    })
+}
+$("#overlay").onclick = ()=>{
+    $("#wordPopup").classList.remove("show");
+    $("#overlay").classList.remove("show");
+}
+
+// 题号栏吸顶监听
+const qBar = $("#qNumBar");
+window.addEventListener("scroll", ()=>{
+    const rect = qBar.getBoundingClientRect();
+    if(rect.top <= 72){
+        qBar.classList.add("sticky");
+    }else{
+        qBar.classList.remove("sticky");
+    }
+})
+
+// 初始化
+$(".nav-btn[data-id='A']").classList.add("active");
+renderSection();
+</script>
+</body>
+</html>
