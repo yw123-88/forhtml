@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英语周报交互式讲评</title>
+<style>
+:root{
+  --base-font-size:16px;
+  --primary:#1f5c45;
+  --primary-light:#347d60;
+  --bg:#f8faf9;
+  --text:#222;
+  --card:#fff;
+  --border:#dde6e2;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-size:var(--base-font-size)}
+body{
+  font-family:"Microsoft YaHei",system-ui,sans-serif;
+  background-color:var(--bg);
+  color:var(--text);
+  line-height:1.6;
+}
+/* 顶部导航 */
+.top-nav{
+  background-color:var(--primary);
+  color:#fff;
+  padding:12px 16px;
+  position:sticky;
+  top:0;
+  z-index:99;
+}
+.nav-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.nav-title{font-weight:bold;font-size:1.1em}
+.font-control{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.font-control label{white-space:nowrap;color:#fff}
+#fontSlider{width:160px}
+.tab-buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.tab-btn{
+  border:none;background:var(--primary-light);color:#fff;
+  padding:6px 10px;border-radius:4px;cursor:pointer;
+}
+.tab-btn.active{background:#fff;color:var(--primary);font-weight:bold}
+/* 主体双栏 */
+.container{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  min-height:calc(100vh - 110px);
+}
+@media (max-width:800px){
+  .container{grid-template-columns:1fr}
+}
+.col{padding:16px}
+.col-left{border-right:1px solid var(--border)}
+.article-title{font-size:1.2em;font-weight:bold;margin-bottom:12px;color:var(--primary)}
+.trans-btn{
+  background:var(--primary);color:#fff;border:none;
+  padding:6px 10px;border-radius:4px;cursor:pointer;margin-bottom:12px
+}
+.trans-text{
+  background:#edf4f1;padding:10px;border-radius:6px;margin:10px 0;display:none
+}
+.article-content{white-space:pre-line}
+/* 生词 */
+.word-mark{
+  color:var(--primary-light);font-weight:bold;cursor:pointer;text-decoration:underline dotted
+}
+/* 题号吸顶栏 */
+.q-bar{
+  display:flex;gap:6px;flex-wrap:wrap;padding:8px 0;
+  background:var(--bg);z-index:90;
+  position:sticky;
+  top:106px;
+  margin-bottom:12px;
+}
+.q-btn{
+  width:32px;height:32px;border-radius:50%;border:1px solid var(--primary);
+  background:#fff;color:var(--primary);cursor:pointer
+}
+.q-btn.active{background:var(--primary);color:#fff}
+/* 题目区域 */
+.question-item{display:none}
+.question-item.show{display:block}
+.q-title{font-weight:bold;margin-bottom:8px}
+.opt{
+  border:1px solid var(--border);border-radius:6px;padding:8px;margin:6px 0;
+  cursor:pointer
+}
+.opt.right{background:#d7f3e3;border-color:#289b57}
+.opt.wrong{background:#ffe9e9;border-color:#d64040}
+.answer-wrap{margin-top:12px}
+.toggle-ans{
+  border:none;background:var(--primary-light);color:#fff;
+  padding:6px 10px;border-radius:4px;cursor:pointer
+}
+.ans-content{
+  margin-top:8px;padding:10px;background:#edf4f1;border-radius:6px;display:none
+}
+/* 写作范文模块 */
+.writing-block .toggle-btn{
+  border:none;background:var(--primary-light);color:#fff;
+  padding:6px 10px;border-radius:4px;cursor:pointer;margin:6px 0
+}
+.writing-content{
+  background:#edf4f1;padding:10px;border-radius:6px;margin:8px 0;display:none
+}
+/* 查词弹窗 */
+.word-popup{
+  position:fixed;
+  background:#fff;border:1px solid var(--border);border-radius:8px;
+  padding:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  max-width:320px;z-index:200;display:none
+}
+.word-popup h4{color:var(--primary);margin-bottom:4px}
+.word-ipa{color:#555;font-style:italic}
+.word-desc{margin:6px 0}
+.word-ex{font-size:0.9em;color:#444}
+/* 遮罩 */
+.mask{
+  position:fixed;inset:0;background:transparent;z-index:199;display:none
+}
+</style>
+</head>
+<body>
+<div class="top-nav">
+  <div class="nav-head">
+    <div class="nav-title">英语周报 · 交互式讲评系统</div>
+    <div class="font-control">
+      <label>字号</label>
+      <input type="range" id="fontSlider" min="13" max="48" value="16">
+      <span id="fontVal">16px</span>
+    </div>
+  </div>
+  <div class="tab-buttons" id="tabWrap">
+    <button class="tab-btn" data-tab="A">A篇</button>
+    <button class="tab-btn" data-tab="B">B篇</button>
+    <button class="tab-btn" data-tab="C">C篇</button>
+    <button class="tab-btn" data-tab="D">D篇</button>
+    <button class="tab-btn" data-tab="seven">七选五</button>
+    <button class="tab-btn" data-tab="cloze">完形填空</button>
+    <button class="tab-btn" data-tab="grammar">语法填空</button>
+    <button class="tab-btn" data-tab="letter">应用文</button>
+    <button class="tab-btn" data-tab="continue">读后续写</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="col col-left" id="colLeft">
+    <div class="article-title" id="artTitle"></div>
+    <button class="trans-btn" id="transBtn">显示翻译</button>
+    <div class="trans-text" id="transBox"></div>
+    <div class="article-content" id="artContent"></div>
+  </div>
+  <div class="col col-right" id="colRight">
+    <div class="q-bar" id="qBar"></div>
+    <div id="questionBox"></div>
+  </div>
+</div>
+
+<div class="mask" id="mask"></div>
+<div class="word-popup" id="wordPop">
+  <h4 id="popWord"></h4>
+  <div class="word-ipa" id="popIpa"></div>
+  <div class="word-desc" id="popDesc"></div>
+  <div class="word-ex" id="popEx"></div>
+</div>
+
+<script>
+// ========== 在这里替换成你的周报内容 ==========
+const paperData = {
+  A:{
+    title:"A 篇阅读（示例）",
+    raw:"Many teenagers <span class='word-mark' data-w='volunteer'>volunteer</span> in community activities. It helps them build confidence and social skills.\nThey learn how to communicate with different people and solve practical problems.",
+    trans:"许多青少年在社区活动中做志愿者。这有助于他们建立自信和社交能力。他们学习如何和不同的人交流、解决实际问题。",
+    questions:[
+      {q:"What is the main benefit of volunteering for teens?",opts:["A. Earn money","B. Build confidence","C. Travel abroad","D. Get free gifts"],ans:"B",explain:"原文提到 It helps them build confidence and social skills，故选B。"}
+    ]
+  },
+  B:{
+    title:"B 篇阅读（示例）",
+    raw:"Reading is a good <span class='word-mark' data-w='habit'>habit</span>. It opens a new world for us and improves our vocabulary.",
+    trans:"阅读是一个好习惯。它为我们打开新世界，提升词汇量。",
+    questions:[
+      {q:"What can reading improve?",opts:["A. Cooking skills","B. Vocabulary","C. Running speed","D. Painting"],ans:"B",explain:"原文 improves our vocabulary，选B。"}
+    ]
+  },
+  C:{
+    title:"C 篇阅读（示例）",
+    raw:"Protecting the <span class='word-mark' data-w='environment'>environment</span> is everyone’s duty. Small actions can make a big difference.",
+    trans:"保护环境是每个人的责任，微小行动可以带来巨大改变。",
+    questions:[
+      {q:"Which statement is true?",opts:["A. Only scientists protect environment","B. Small actions matter","C. Pollution cannot be reduced","D. We need not care about earth"],ans:"B",explain:"原文 Small actions can make a big difference，选B。"}
+    ]
+  },
+  D:{
+    title:"D 篇阅读（示例）",
+    raw:"Music can <span class='word-mark' data-w='relax'>relax</span> our mind after long study. Many students listen to light music.",
+    trans:"长时间学习后，音乐可以放松我们的大脑，很多学生听轻音乐。",
+    questions:[
+      {q:"Why do students listen to light music?",opts:["A. For fun only","B. To relax","C. To dance","D. To make noise"],ans:"B",explain:"Music can relax our mind，选B。"}
+    ]
+  },
+  seven:{
+    title:"七选五（示例）",
+    raw:"How to form good learning habits?\n<span class='word-mark' data-w='schedule'>Schedule</span> your time carefully. ___1___\nFind a good place to study. ___2___",
+    trans:"如何养成良好学习习惯？仔细规划你的时间。___1___。找一个合适的学习地点。___2___。",
+    questions:[
+      {q:"空1：",opts:["A. Plan your daily time","B. Play games often","C. Sleep all day","D. Eat much junk food","E. Buy expensive pens","F. Watch TV always","G. Give up study"],ans:"A",explain:"本段主题是规划时间，A匹配。"},
+      {q:"空2：",opts:["A. Plan your daily time","B. Keep the place quiet","C. Play games often","D. Sleep all day","E. Buy expensive pens","F. Watch TV always","G. Give up study"],ans:"B",explain:"本段讲学习地点，需要安静，选B。"}
+    ]
+  },
+  cloze:{
+    title:"完形填空（示例）",
+    raw:"Tom decided to <span class='word-mark' data-w='attempt'>attempt</span> the difficult task. He believed he could make it.",
+    trans:"汤姆决定尝试这项艰难任务，他相信自己可以做到。",
+    questions:[
+      {q:"(1) Tom decided to ____ the task.",opts:["A. give up","B. attempt","C. forget","D. hide"],ans:"B",explain:"attempt 意为尝试，符合语境。"}
+    ]
+  },
+  grammar:{
+    title:"语法填空（示例）",
+    raw:"It is important ____(keep) a balanced diet. <span class='word-mark' data-w='balanced'>balanced</span>",
+    trans:"保持均衡饮食很重要。",
+    questions:[
+      {q:"It is important ____(keep) a balanced diet.",opts:["A. keep","B. to keep","C. keeping","D. kept"],ans:"B",explain:"固定句型 It is +adj.+to do，填to keep。"}
+    ]
+  },
+  letter:{
+    title:"应用文（示例 · 邀请信）",
+    raw:"Write an invitation letter to your foreign friend.",
+    trans:"给外国朋友写一封邀请信。",
+    isWriting:true,
+   范文:"Dear Tom,\nI’m writing to invite you to our school English festival...\nYours,\nLi Hua",
+    tips:"提分点：1.开头点明写信目的；2.信息完整；3.礼貌结尾；4.句式多样。",
+    questions:[]
+  },
+  continue:{
+    title:"读后续写（示例）",
+    raw:"Lily found a little cat beside the road...",
+    trans:"莉莉在路边发现一只小猫……",
+    isWriting:true,
+   范文:"She gently picked it up and decided to take it home. Her parents agreed to keep the cat...",
+    tips:"提分点：情绪描写、动作细节、衔接自然、符合原文逻辑。",
+    questions:[]
+  }
+};
+
+// 生词库，和 data-w 对应
+const wordDict = {
+  volunteer:{ipa:"/ˌvɒlənˈtɪə(r)/",pos:"n./v.",cn:"志愿者；自愿做",eg:"He likes to volunteer in the community. 他喜欢在社区做志愿工作。"},
+  habit:{ipa:"/ˈhæbɪt/",pos:"n.",cn:"习惯",eg:"Reading is a good habit. 阅读是一个好习惯。"},
+  environment:{ipa:"/ɪnˈvaɪrənmənt/",pos:"n.",cn:"环境",eg:"We should protect the environment. 我们应该保护环境。"},
+  relax:{ipa:"/rɪˈlæks/",pos:"v.",cn:"放松",eg:"Music helps us relax. 音乐帮我们放松。"},
+  schedule:{ipa:"/ˈʃedjuːl/",pos:"n./v.",cn:"时间表；安排",eg:"Make a study schedule. 制定一份学习计划表。"},
+  attempt:{ipa:"/əˈtempt/",pos:"v./n.",cn:"尝试；试图",eg:"He will attempt the exam again. 他会再次尝试这场考试。"},
+  balanced:{ipa:"/ˈbælənst/",pos:"adj.",cn:"均衡的",eg:"We need a balanced diet. 我们需要均衡饮食。"}
+};
+
+// ========== 逻辑代码 ==========
+const $ = s=>document.querySelector(s);
+const $$ = s=>document.querySelectorAll(s);
+let currentTab = "A";
+
+// 字号
+const slider = $("#fontSlider");
+slider.oninput = ()=>{
+  const val = slider.value;
+  document.documentElement.style.setProperty("--base-font-size",val+"px");
+  $("#fontVal").textContent = val+"px";
+};
+
+// 篇章切换按钮
+$$(".tab-btn").forEach(btn=>{
+  btn.onclick = ()=>{
+    $$(".tab-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    currentTab = btn.dataset.tab;
+    renderPage();
+  }
+})
+
+// 翻译按钮
+$("#transBtn").onclick = function(){
+  const box = $("#transBox");
+  if(box.style.display==="block"){
+    box.style.display="none";
+    this.textContent="显示翻译";
+  }else{
+    box.style.display="block";
+    this.textContent="隐藏翻译";
+  }
+}
+
+// 渲染页面
+function renderPage(){
+  const data = paperData[currentTab];
+  $("#artTitle").textContent = data.title;
+  $("#artContent").innerHTML = data.raw;
+  $("#transBox").textContent = data.trans;
+  $("#transBox").style.display="none";
+  $("#transBtn").textContent="显示翻译";
+
+  const qBar = $("#qBar");
+  const qBox = $("#questionBox");
+  qBar.innerHTML="";
+  qBox.innerHTML="";
+
+  // 写作类（应用文/读后续写）
+  if(data.isWriting){
+    qBar.style.display="none";
+    qBox.innerHTML = `
+      <div class="writing-block">
+        <button class="toggle-btn btn-fan">查看参考范文</button>
+        <div class="writing-content fan">${data.范文.replaceAll("\n","<br>")}</div>
+        <button class="toggle-btn btn-tip">查看写作提分点</button>
+        <div class="writing-content tip">${data.tips}</div>
+      </div>
+    `;
+    $(".btn-fan").onclick = ()=>{
+      const d = $(".fan");
+      d.style.display = d.style.display==="block"?"none":"block";
+    }
+    $(".btn-tip").onclick = ()=>{
+      const d = $(".tip");
+      d.style.display = d.style.display==="block"?"none":"block";
+    }
+    bindWordClick();
+    return;
+  }
+  qBar.style.display="flex";
+  // 题目题号
+  data.questions.forEach((it,idx)=>{
+    const num = idx+1;
+    const b = document.createElement("button");
+    b.className = "q-btn"+(idx===0?" active":"");
+    b.textContent = num;
+    b.dataset.i = idx;
+    b.onclick = ()=>switchQ(idx);
+    qBar.appendChild(b);
+    // 题目dom
+    const div = document.createElement("div");
+    div.className = "question-item"+(idx===0?" show":"");
+    div.dataset.i = idx;
+    let optHtml = "";
+    it.opts.forEach(o=>{
+      optHtml += `<div class="opt">${o}</div>`
+    })
+    div.innerHTML = `
+      <div class="q-title">${num}. ${it.q}</div>
+      <div class="opts-wrap">${optHtml}</div>
+      <div class="answer-wrap">
+        <button class="toggle-ans">查看答案与解析</button>
+        <div class="ans-content">
+          <strong>答案：${it.ans}</strong><br>
+          解析：${it.explain}
+        </div>
+      </div>
+    `;
+    qBox.appendChild(div);
+  })
+  // 选项点击判对错
+  $$(".opt").forEach(opt=>{
+    opt.onclick = function(){
+      const wrap = this.parentElement;
+      const ans = wrap.closest(".question-item").querySelector(".ans-content strong").textContent.replace("答案：","").trim();
+      const myOpt = this.textContent.slice(0,1);
+      $$(".opt",wrap).forEach(o=>{o.classList.remove("right","wrong")});
+      if(myOpt === ans){
+        this.classList.add("right");
+      }else{
+        this.classList.add("wrong");
+        // 标出正确
+        $$(".opt",wrap).forEach(o=>{
+          if(o.textContent.slice(0,1)===ans) o.classList.add("right");
+        })
+      }
+    }
+  })
+  // 解析折叠
+  $$(".toggle-ans").forEach(btn=>{
+    btn.onclick = function(){
+      const c = this.nextElementSibling;
+      c.style.display = c.style.display==="block"?"none":"block";
+    }
+  })
+  bindWordClick();
+}
+// 切换题目
+function switchQ(i){
+  $$(".q-btn").forEach(b=>b.classList.remove("active"));
+  $$(`.q-btn[data-i="${i}"]`)[0].classList.add("active");
+  $$(".question-item").forEach(q=>q.classList.remove("show"));
+  $$(`.question-item[data-i="${i}"]`)[0].classList.add("show");
+}
+
+// 生词点击弹窗
+function bindWordClick(){
+  $$(".word-mark").forEach(w=>{
+    w.onclick = e=>{
+      e.stopPropagation();
+      const key = w.dataset.w;
+      const info = wordDict[key];
+      $("#popWord").textContent = key;
+      $("#popIpa").textContent = info.ipa;
+      $("#popDesc").textContent = info.pos + " " + info.cn;
+      $("#popEx").textContent = info.eg;
+      const pop = $("#wordPop");
+      pop.style.display="block";
+      $("#mask").style.display="block";
+      pop.style.left = (e.pageX+10)+"px";
+      pop.style.top = (e.pageY+10)+"px";
+    }
+  })
+}
+// 关闭查词弹窗
+$("#mask").onclick = ()=>{
+  $("#wordPop").style.display="none";
+  $("#mask").style.display="none";
+}
+
+// 初始化
+$(".tab-btn[data-tab='A']").classList.add("active");
+renderPage();
+</script>
+</body>
+</html>
